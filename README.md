@@ -25,4 +25,3 @@ Este projeto é um exemplo prático de backend com APIs REST, implementando func
 - **SQL Server**  
 - **BCrypt** (hash de senha)  
 - **JWT** (JSON Web Tokens)
--   
