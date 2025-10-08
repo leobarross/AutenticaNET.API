@@ -42,7 +42,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "AutenticaNET.API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo {
+        Title = "AutenticaNET.API", 
+        Version = "v1",
+        Description = "Sistema de autenticação com JWT usando ASP.NET Core e SQL Server."
+    });
 
     // JWT Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -78,8 +82,8 @@ app.UseSwaggerUI(c =>
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // primeiro
-app.UseAuthorization();  // depois
+app.UseAuthentication(); 
+app.UseAuthorization();
 
 app.MapControllers();
 
