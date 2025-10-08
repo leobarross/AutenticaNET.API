@@ -31,12 +31,12 @@ namespace AutenticaNET.API.Services
         public async Task<string> LoginAsync(LoginDto dto)
         {
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-
             if (user == null)
                 return null;
 
             var valid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
-            if (!valid) return null;
+            if (!valid)
+                return null;
 
             // gerar token
             var claims = new List<Claim>

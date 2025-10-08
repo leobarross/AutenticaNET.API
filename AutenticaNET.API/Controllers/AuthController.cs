@@ -31,11 +31,15 @@ namespace AutenticaNET.API.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        public async Task<IActionResult> Login(LoginDto dto)
         {
             var token = await _authService.LoginAsync(dto);
-            if (token == null) return Unauthorized(new { message = "Credenciais inválidas" });
+
+            if (token == null)
+                return BadRequest(new { message = "Falha ao realizar login. Verifique suas credenciais." });
+
             return Ok(new { token });
         }
+
     }
 }
