@@ -1,40 +1,38 @@
-﻿using AutenticaNET.API.Services.interfaces;
+using AutenticaNET.API.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace AutenticaNET.API.Controllers
+namespace AutenticaNET.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
-    public class UsersController : ControllerBase
+    private readonly IAuthService _authService;
+
+    public UsersController(IAuthService authService)
     {
-        private readonly IAuthService _authService;
+        _authService = authService;
+    }
 
-        public UsersController(IAuthService authService)
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetPerfil()
+    {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(idClaim, out _))
+            return Unauthorized();
+
+        var usuario = await _authService.GetByIdAsync(idClaim!);
+        if (usuario == null)
+            return NotFound();
+
+        return Ok(new
         {
-            _authService = authService;
-        }
-
-        [HttpGet("profile")]
-        public async Task<IActionResult> GetPerfil()
-        {
-            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(idClaim)) return Unauthorized();
-
-            if (!Guid.TryParse(idClaim, out _)) return Unauthorized();
-
-            var usuario = await _authService.GetByIdAsync(idClaim);
-            if (usuario == null) return NotFound();
-
-            return Ok(new
-            {
-                usuario.Id,
-                NomeUsuario = usuario.Username,
-                usuario.Email
-            });
-        }
+            usuario.Id,
+            NomeUsuario = usuario.Username,
+            usuario.Email
+        });
     }
 }
