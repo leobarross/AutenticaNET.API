@@ -1,0 +1,19 @@
+name: Build e testes .NET
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build Release
+        run: dotnet build AutenticaNET.API/AutenticaNET.API.csproj -c Release
+      - name: Testes
+        run: dotnet test tests/AutenticaNET.API.Tests/AutenticaNET.API.Tests.csproj -c Release
