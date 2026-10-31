@@ -1,8 +1,12 @@
-﻿namespace AutenticaNET.API.DTOs
+using System.ComponentModel.DataAnnotations;
+
+namespace AutenticaNET.API.DTOs;
+
+public class LoginDto
 {
-    public class LoginDto
-    {
-        public string Email { get; set; } = null!;
-        public string Password { get; set; } = null!;
-    }
+    [Required, EmailAddress]
+    public string Email { get; set; } = null!;
+
+    [Required]
+    public string Password { get; set; } = null!;
 }
