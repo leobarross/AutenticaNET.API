@@ -10,29 +10,27 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configurações
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
-    ?? throw new InvalidOperationException("Configuração Jwt ausente.");
+    ?? throw new InvalidOperationException("Configuração JWT ausente.");
 
 if (string.IsNullOrWhiteSpace(jwtSettings.Key) ||
-    Encoding.UTF8.GetByteCount(jwtSettings.Key) < 32)
+    Encoding.UTF8.GetByteCount(jwtSettings.Key) < 32 ||
+    string.IsNullOrWhiteSpace(jwtSettings.Issuer) ||
+    string.IsNullOrWhiteSpace(jwtSettings.Audience) ||
+    jwtSettings.ExpiresInMinutes <= 0)
 {
-    throw new InvalidOperationException(
-        "Configure Jwt:Key com pelo menos 32 bytes via variável de ambiente ou User Secrets.");
+    throw new InvalidOperationException("Configure Jwt:Key (mínimo de 32 bytes), Jwt:Issuer, Jwt:Audience e Jwt:ExpiresInMinutes.");
 }
 
-// DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Serviços
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Autenticação JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -41,32 +39,32 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtSettings.Issuer,
             ValidateAudience = true,
             ValidAudience = jwtSettings.Audience,
-            ValidateLifetime = true
+            ValidateLifetime = true,
+            RequireExpirationTime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
 
-// Controllers e Swagger
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo {
-        Title = "AutenticaNET.API", 
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "AutenticaNET.API",
         Version = "v1",
-        Description = "Sistema de autenticação com JWT usando ASP.NET Core e SQL Server."
+        Description = "Projeto de estudo: autenticação JWT com ASP.NET Core e SQL Server."
     });
-
-    // JWT Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Digite 'Bearer' seguido do token JWT"
+        Description = "Informe apenas o token JWT."
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -80,19 +78,13 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-
-// Pipeline
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "AutenticaNET.API v1");
-});
-
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 app.UseHttpsRedirection();
-
-app.UseAuthentication(); 
+app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
