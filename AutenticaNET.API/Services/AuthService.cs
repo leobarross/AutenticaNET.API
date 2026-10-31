@@ -1,4 +1,4 @@
-﻿using AutenticaNET.API.Data;
+using AutenticaNET.API.Data;
 using AutenticaNET.API.DTOs;
 using AutenticaNET.API.Models;
 using AutenticaNET.API.Services.interfaces;
@@ -10,75 +10,61 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace AutenticaNET.API.Services
+namespace AutenticaNET.API.Services;
+
+public class AuthService : IAuthService
 {
-    public class AuthService : IAuthService
+    private readonly ApplicationDbContext _db;
+    private readonly JwtSettings _jwtSettings;
+
+    public AuthService(ApplicationDbContext db, IOptions<JwtSettings> jwtSettings)
     {
-        private readonly ApplicationDbContext _db;
-        private readonly JwtSettings _jwtSettings;
+        _db = db;
+        _jwtSettings = jwtSettings.Value;
+    }
 
-        public AuthService(ApplicationDbContext db, IOptions<JwtSettings> jwtSettings)
+    public Task<User> GetByIdAsync(string id) => _db.Users.FindAsync(id).AsTask();
+
+    public async Task<string> LoginAsync(LoginDto dto)
+    {
+        var email = dto.Email.Trim();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            return null;
+
+        var claims = new List<Claim>
         {
-            _db = db;
-            _jwtSettings = jwtSettings.Value;
-        }
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.Role, user.Role)
+        };
 
-        public async Task<User> GetByIdAsync(string id)
-        {
-            return await _db.Users.FindAsync(id);
-        }
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresInMinutes),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
 
-        public async Task<string> LoginAsync(LoginDto dto)
-        {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (user == null)
-                return null;
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 
-            var valid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
-            if (!valid)
-                return null;
+    public async Task<UserDto> RegisterAsync(RegisterDto dto)
+    {
+        var email = dto.Email.Trim();
+        var username = dto.Username.Trim();
 
-            // gerar token
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
+        if (await _db.Users.AnyAsync(u => u.Email == email))
+            throw new InvalidOperationException("Email já cadastrado");
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        if (await _db.Users.AnyAsync(u => u.Username == username))
+            throw new InvalidOperationException("Username já cadastrado");
 
-            var token = new JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresInMinutes),
-                signingCredentials: creds
-            );
+        var user = new User(username, email, BCrypt.Net.BCrypt.HashPassword(dto.Password));
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        public async Task<UserDto> RegisterAsync(RegisterDto dto)
-        {
-            if (await _db.Users.AnyAsync(u => u.Email == dto.Email))
-                throw new InvalidOperationException("Email já cadastrado");
-
-            if (await _db.Users.AnyAsync(u => u.Username == dto.Username))
-                throw new InvalidOperationException("Username já cadastrado");
-
-            var user = new User
-            (
-                dto.Username,
-                dto.Email,
-                BCrypt.Net.BCrypt.HashPassword(dto.Password)
-            );
-
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
-
-            return new UserDto { Id = user.Id, Username = user.Username, Email = user.Email };
-        }
+        return new UserDto { Id = user.Id, Username = user.Username, Email = user.Email };
     }
 }
