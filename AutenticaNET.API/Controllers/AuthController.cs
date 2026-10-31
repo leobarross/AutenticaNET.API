@@ -1,45 +1,41 @@
-﻿using AutenticaNET.API.DTOs;
+using AutenticaNET.API.DTOs;
 using AutenticaNET.API.Services.interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AutenticaNET.API.Controllers
+namespace AutenticaNET.API.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly IAuthService _authService;
+
+    public AuthController(IAuthService authService)
     {
-        private readonly IAuthService _authService;
+        _authService = authService;
+    }
 
-        public AuthController(IAuthService authService)
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+    {
+        try
         {
-            _authService = authService;
+            var user = await _authService.RegisterAsync(dto);
+            return StatusCode(201, user);
         }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+        catch (InvalidOperationException ex)
         {
-            try
-            {
-                var user = await _authService.RegisterAsync(dto);
-                return CreatedAtAction(nameof(Register), new {id = user.Id}, user);
-            }
-            catch(InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            return Conflict(new { message = ex.Message });
         }
+    }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto dto)
-        {
-            var token = await _authService.LoginAsync(dto);
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    {
+        var token = await _authService.LoginAsync(dto);
+        if (token == null)
+            return Unauthorized(new { message = "Credenciais inválidas." });
 
-            if (token == null)
-                return BadRequest(new { message = "Falha ao realizar login. Verifique suas credenciais." });
-
-            return Ok(new { token });
-        }
-
+        return Ok(new { token });
     }
 }
