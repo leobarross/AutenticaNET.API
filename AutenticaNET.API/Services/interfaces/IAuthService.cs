@@ -7,6 +7,6 @@ namespace AutenticaNET.API.Services.interfaces
     {
         Task<UserDto> RegisterAsync(RegisterDto dto);
         Task<string> LoginAsync(LoginDto dto);
-        Task<User> GetByIdAsync(int id);
+        Task<User> GetByIdAsync(string id);
     }
 }
