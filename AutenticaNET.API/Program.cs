@@ -10,18 +10,26 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configurações
+// ConfiguraÃ§Ãµes
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
-var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
+var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
+    ?? throw new InvalidOperationException("ConfiguraÃ§Ã£o Jwt ausente.");
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Key) ||
+    Encoding.UTF8.GetByteCount(jwtSettings.Key) < 32)
+{
+    throw new InvalidOperationException(
+        "Configure Jwt:Key com pelo menos 32 bytes via variÃ¡vel de ambiente ou User Secrets.");
+}
 
 // DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Serviços
+// ServiÃ§os
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Autenticação JWT
+// AutenticaÃ§Ã£o JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -45,7 +53,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo {
         Title = "AutenticaNET.API", 
         Version = "v1",
-        Description = "Sistema de autenticação com JWT usando ASP.NET Core e SQL Server."
+        Description = "Sistema de autenticaÃ§Ã£o com JWT usando ASP.NET Core e SQL Server."
     });
 
     // JWT Swagger
