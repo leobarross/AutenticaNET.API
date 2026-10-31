@@ -1,4 +1,4 @@
-﻿using AutenticaNET.API.Data;
+﻿using AutenticaNET.API.Services.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +11,11 @@ namespace AutenticaNET.API.Controllers
     [Authorize]
     public class UsersController : ControllerBase
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IAuthService _authService;
 
-        public UsersController(ApplicationDbContext db)
+        public UsersController(IAuthService authService)
         {
-            _db = db;
+            _authService = authService;
         }
 
         [HttpGet("profile")]
@@ -24,7 +24,9 @@ namespace AutenticaNET.API.Controllers
             var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(idClaim)) return Unauthorized();
 
-            var usuario = await _db.Users.FindAsync(idClaim);
+            if (!Guid.TryParse(idClaim, out _)) return Unauthorized();
+
+            var usuario = await _authService.GetByIdAsync(idClaim);
             if (usuario == null) return NotFound();
 
             return Ok(new
