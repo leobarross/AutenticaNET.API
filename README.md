@@ -1,52 +1,75 @@
 # AutenticaNET.API
 
-Sistema de autenticação com **JWT** usando **ASP.NET Core** e **SQL Server**.
-
-Este projeto é um exemplo prático de backend com APIs REST, implementando funcionalidades essenciais de autenticação e segurança.
-
----
+Projeto de estudo em **C# / ASP.NET Core 8** para aprender autenticação em APIs REST com JWT, Entity Framework Core e SQL Server.
 
 ## Funcionalidades
 
-- Registro de usuários com **hash de senha** usando **BCrypt**  
-- Login e geração de **JWT**  
-- Endpoint protegido para visualizar perfil do usuário (`profile`)  
-- Controle de roles (`User`)  
-- Banco de dados **SQL Server**  
-- Estrutura organizada para facilitar manutenção e evolução do projeto  
+- Registro de usuário com senha protegida usando BCrypt.
+- Login com emissão de JWT assinado.
+- Endpoint de perfil protegido por autenticação.
+- Role padrão `User` incluída no token.
+- Validação dos dados recebidos com Data Annotations.
+- Respostas HTTP: 201 para cadastro, 409 para duplicidade, 401 para credenciais inválidas.
+- Configuração JWT sem chave publicada no repositório.
 
----
+> Projeto educacional: não deve ser considerado um provedor de identidade pronto para produção. Recursos como proteção contra tentativas repetidas de login e gestão de sessões não estão implementados.
 
 ## Tecnologias
 
-- **C#**  
-- **ASP.NET Core 8**  
-- **Entity Framework Core**  
-- **SQL Server**  
-- **BCrypt** (hash de senha)  
-- **JWT** (JSON Web Tokens)
+.NET 8, ASP.NET Core, Entity Framework Core, SQL Server, JWT, BCrypt e Swagger (em desenvolvimento).
 
----
+## Executar localmente
 
-## Execução local
+Requisitos: .NET SDK 8, SQL Server e ferramenta `dotnet-ef`.
 
-Requisitos: SDK .NET 8 e SQL Server local.
-
-**Segurança:** não coloque chaves JWT, senhas ou tokens em arquivos versionados. Para desenvolvimento, use o Secret Manager do .NET:
+1. Entre na pasta `AutenticaNET.API` (onde está o arquivo `.csproj`).
+2. Configure uma chave JWT **aleatória e exclusiva**, com no mínimo 32 bytes, por User Secrets:
 
 ```bash
-cd AutenticaNET.API
 dotnet user-secrets init
-dotnet user-secrets set "Jwt:Key" "<chave-local-aleatoria-com-no-minimo-32-bytes>"
+dotnet user-secrets set "Jwt:Key" "SUBSTITUA_POR_CHAVE_ALEATORIA_FORTE_COM_32_BYTES_OU_MAIS"
 ```
 
-Substitua o exemplo por uma chave forte gerada localmente. Como alternativa, configure a variável de ambiente `Jwt__Key`. A inicialização falha de forma explícita quando a chave não estiver configurada ou tiver menos de 32 bytes.
+A chave acima é apenas um exemplo e **não** deve ser reutilizada. Também é possível usar a variável de ambiente `Jwt__Key`. Caso seja necessário, ajuste `ConnectionStrings:DefaultConnection` para seu SQL Server local via User Secrets.
 
-Ajuste `ConnectionStrings:DefaultConnection` conforme o SQL Server local (preferencialmente via User Secrets). Depois aplique as migrations com `dotnet ef database update` (requer `dotnet-ef`) e execute `dotnet run`.
+3. Execute:
 
-Endpoints:
-- `POST /api/Auth/register` — cadastro.
-- `POST /api/Auth/login` — login e geração do JWT.
-- `GET /api/Users/profile` — perfil autenticado com Bearer token.
+```bash
+dotnet restore
+dotnet ef database update
+dotnet run
+```
 
-Projeto de estudo, não uma solução de autenticação pronta para produção.
+O Swagger fica disponível em `/swagger` somente em ambiente de desenvolvimento.
+
+### Exemplos de requisição
+
+`POST /api/Auth/register`
+
+```json
+{"username":"usuario_teste","email":"usuario@example.com","password":"SenhaForteExemplo123"}
+```
+
+`POST /api/Auth/login`
+
+```json
+{"email":"usuario@example.com","password":"SenhaForteExemplo123"}
+```
+
+`GET /api/Users/profile`: envie `Authorization: Bearer <token>`.
+
+## Testes
+
+Os testes ficam em `tests/AutenticaNET.API.Tests`. Execute na raiz:
+
+```bash
+dotnet test tests/AutenticaNET.API.Tests/AutenticaNET.API.Tests.csproj
+```
+
+O GitHub Actions executa build e testes a cada push e pull request, caso Actions esteja habilitado para o repositório.
+
+## Observações de segurança
+
+A chave de assinatura JWT que anteriormente estava versionada foi removida do arquivo atual, mas **permanece no histórico Git**. Se essa chave foi utilizada em algum ambiente real, substitua-a e invalide os tokens correspondentes. Nunca publique segredos ou dados reais de usuários.
+
+Não são necessários certificados ou credenciais reais para estudar este projeto.
